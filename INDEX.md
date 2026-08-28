@@ -6,6 +6,7 @@ _(empty)_
 
 ## re
 
-_(empty)_
+### Patterns
+- re/patterns/anti-debug.md — IsDebuggerPresent (1 technique logged)
 
 ## Last updated: 2026-08-28
