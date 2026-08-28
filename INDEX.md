@@ -13,6 +13,7 @@
 
 ### Solved problems
 - re/solved-problems/crackme01-pipeline-validation.md — First end-to-end run of the RE pipeline: triage to keygen on a self-authored 32-bit PE
+- re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 
 ### Tool notes
 - re/tool-notes/ghidra.md (1 note)
