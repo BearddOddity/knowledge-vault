@@ -175,14 +175,21 @@ function gitError(e: any): string {
 }
 
 /**
- * Commit and push. A failed push is reported, never swallowed: the local commit
- * still stands, so the caller is told exactly what did and did not happen.
+ * Commit and push the given files. Only the paths this call touched are staged —
+ * `git add -A` would sweep in any unrelated work in progress sitting in the vault.
+ *
+ * A failed push is reported, never swallowed: the local commit still stands, so
+ * the caller is told exactly what did and did not happen.
  */
-function commitAndPush(message: string): string {
+function commitAndPush(message: string, paths: string[]): string {
+  const rel = [...paths, inVault("INDEX.md")]
+    .filter((p) => fs.existsSync(p)) // e.g. the attachments dir, only created when there are screenshots
+    .map((p) => path.relative(ROOT, p).replace(/\\/g, "/"));
   try {
-    git(["add", "-A"]);
-    if (!git(["diff", "--cached", "--name-only"])) return "No file changes to commit.";
-    git(["commit", "-m", message]);
+    git(["add", "--", ...rel]);
+    if (!git(["diff", "--cached", "--name-only", "--", ...rel])) return "No file changes to commit.";
+    // Pathspec on commit too, so anything the user had staged by hand is left alone.
+    git(["commit", "-m", message, "--", ...rel]);
   } catch (e) {
     return `Files written, but git commit FAILED: ${gitError(e)}`;
   }
@@ -312,7 +319,7 @@ server.registerTool(
     rebuildIndex();
     return text(
       `Saved technique "${tech}" to ${cat}/patterns/${topicSlug}.md (${plural(names.length, "technique")} total).\n` +
-        commitAndPush(`Add pattern: ${topicSlug} — ${tech} (${cat})`)
+        commitAndPush(`Add pattern: ${topicSlug} — ${tech} (${cat})`, [file])
     );
   }
 );
@@ -383,7 +390,7 @@ server.registerTool(
       `Logged ${cat}/solved-problems/${nameSlug}.md` +
         (links.length ? ` with ${plural(links.length, "screenshot")}` : "") +
         `.\n` +
-        commitAndPush(`Log solved problem: ${nameSlug} (${cat})`)
+        commitAndPush(`Log solved problem: ${nameSlug} (${cat})`, [file, inVault(cat, "attachments", nameSlug)])
     );
   }
 );
@@ -414,7 +421,7 @@ server.registerTool(
     rebuildIndex();
     return text(
       `Appended note to ${cat}/tool-notes/${toolSlug}.md (${plural(countSections(file), "note")} total).\n` +
-        commitAndPush(`Add tool note: ${toolSlug} (${cat})`)
+        commitAndPush(`Add tool note: ${toolSlug} (${cat})`, [file])
     );
   }
 );

@@ -135,6 +135,19 @@ test("path traversal is refused", async () => {
   assert.equal(r.isError, true);
 });
 
+test("unrelated work in the vault is not swept into the commit", async () => {
+  const stray = path.join(vault, "general", "patterns", "wip-draft.md");
+  fs.writeFileSync(stray, "half-written, not ready to commit");
+
+  await call("save_tool_note", { category: "re", tool: "ghidra", note: "Ctrl+L retypes a variable." });
+
+  assert.match(git("status", "--porcelain", "-uall"), /wip-draft\.md/, "the stray file should still be uncommitted");
+  const committed = git("show", "--name-only", "--format=", "HEAD");
+  assert.doesNotMatch(committed, /wip-draft/);
+  assert.match(committed, /re\/tool-notes\/ghidra\.md/);
+  fs.rmSync(stray);
+});
+
 test("search_knowledge finds a hit despite a typo", async () => {
   const r = await call("search_knowledge", { query: "IsDebugerPresent" });
   assert.equal(r.isError, false);
