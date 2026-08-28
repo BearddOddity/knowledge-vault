@@ -11,6 +11,9 @@
 - re/patterns/anti-debug.md — IsDebuggerPresent, NtQueryInformationProcess (2 techniques logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
 
+### Solved problems
+- re/solved-problems/crackme01-pipeline-validation.md — First end-to-end run of the RE pipeline: triage to keygen on a self-authored 32-bit PE
+
 ### Tool notes
 - re/tool-notes/ghidra.md (1 note)
 
