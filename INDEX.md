@@ -2,7 +2,8 @@
 
 ## general
 
-_(empty)_
+### Solved problems
+- general/solved-problems/mcp-auto-commit-swept-unrelated-files.md — Auto-commit in an MCP write tool used git add -A and swallowed unrelated work in progress
 
 ## re
 
