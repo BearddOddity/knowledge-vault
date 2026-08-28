@@ -1,0 +1,9 @@
+# Never store binaries or executables in the vault — notes and screenshots only.
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.zip
+*.7z
+*.rar
