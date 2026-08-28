@@ -447,7 +447,6 @@ server.registerTool(
         { name: "path", weight: 2 },
         { name: "content", weight: 1 },
       ],
-      includeScore: true,
       ignoreLocation: true,
       threshold: 0.4,
       minMatchCharLength: 3,
@@ -456,10 +455,12 @@ server.registerTool(
     const hits = fuse.search(q).slice(0, limit ?? 10);
     if (!hits.length) return text(`No matches for ${JSON.stringify(q)}.`);
 
-    const out = hits.map((h) => {
+    // Results are listed best-first. Fuse's raw score is not shown: it rates a
+    // match against the whole document, so an exact hit inside a long file scores
+    // poorly and reads as a bad match when the ranking is in fact correct.
+    const out = hits.map((h, i) => {
       const lines = snippets(h.item.content, q);
-      const score = (1 - (h.score ?? 0)).toFixed(2);
-      return [`## ${h.item.path}  (relevance ${score})`, ...lines.map((l) => `  ${l}`)].join("\n");
+      return [`## ${i + 1}. ${h.item.path}`, ...lines.map((l) => `  ${l}`)].join("\n");
     });
     return text(`${plural(hits.length, "match")} for ${JSON.stringify(q)}:\n\n${out.join("\n\n")}`);
   }
