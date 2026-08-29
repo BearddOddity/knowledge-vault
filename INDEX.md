@@ -15,6 +15,7 @@
 - re/patterns/making-a-wsl2-distro-behave-like-a-real-linux-pc.md — systemd via wsl.conf and a clipboard bridge between the nested X server and WSL… (5 techniques logged)
 - re/patterns/naming-a-large-game-binary-at-scale.md — RTTI vtable walking names thousands at once and beats every other source combin… (5 techniques logged)
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
+- re/patterns/separating-engine-platform-and-game-code-across-binaries.md — One title built for two platforms pins the platform layer exactly; more titles… (6 techniques logged)
 - re/patterns/stabs-debug-symbols-in-mingw-binaries.md — Check for .stab/.stabstr sections before assuming locals are anonymous - GCC/Mi… (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
 
