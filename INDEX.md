@@ -30,6 +30,7 @@
 - re/solved-problems/x-men-legends-xbox-analysis-campaign.md — Took an Xbox game binary from 714 named functions to 4,560 and split its 15,742 functions into platform, engine and game code, using RTTI vtable walking plus cross-binary hash comparison against four related builds.
 
 ### Tool notes
+- re/tool-notes/finding-vtables-without-rtti.md (4 notes)
 - re/tool-notes/ghidra.md (1 note)
 - re/tool-notes/moving-a-ghidra-project-between-machines-or-users.md (7 notes)
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
