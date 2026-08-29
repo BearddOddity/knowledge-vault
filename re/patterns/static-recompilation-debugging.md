@@ -53,3 +53,32 @@ MSVC will tell you exactly. Pull the compile command out of the build system (`n
 The same listing also identifies which host register holds which guest register, because the prologue loads them from named globals — `mov r15d, OFFSET FLAT:g_edi`. That turns `mov ecx, [r14+r15]` from a guess into a fact, and it is what confirmed the guard had compiled correctly in the first place.
 
 **Prefer two independent measurements over one good story.** The theory here — that an indirect callee was clobbering the register — only became a diagnosis when a second, unrelated instrument (a callee-saved register check on indirect calls) reported that register being clobbered to exactly 0 and 4, the same two values the page-zero census had recorded at the two sites. One measurement plus a plausible mechanism is a hypothesis. Two instruments agreeing on a specific pair of values is a finding.
+
+## Check callee-saved registers across indirect calls, not just direct ones
+
+A static recompiler that keeps the guest CPU state in globals (`g_eax`, `g_ebx`, `g_edi`, …) has no machine-level enforcement of the guest ABI. On x86, `ebx`, `esi`, `edi` and `ebp` are callee-saved under cdecl, stdcall and thiscall, and the original code was compiled assuming that. If a lifted callee returns without restoring them, its caller reads a register the source code was entitled to treat as intact — and nothing crashes at the point of the mistake.
+
+The check is cheap: snapshot those globals before the call, compare after, report once per callee.
+
+```c
+#define ABI_CALL(fn) do {                                        \
+    uint32_t b = g_ebx, s = g_esi, d = g_edi;                    \
+    fn();                                                        \
+    if (g_ebx != b || g_esi != s || g_edi != d)                  \
+        abi_violation(#fn, b, s, d);                             \
+} while (0)
+```
+
+**The trap is applying it only to direct calls.** `#fn` needs a literal name, so the macro naturally covers `call sub_XXXX` and stops there. Indirect calls — `call [reg]`, vtable dispatch, function-pointer tables — go through a different code path, and in the project this note comes from that path checked only whether `esp` had escaped the stack. Roughly a third of the violations in the build were invisible for that reason: 14 indirect against 21 direct.
+
+Indirect calls are where you most need the check, because they are exactly where a recompiler substitutes a stub. A missing target falls back to a generic no-op, and a no-op that does not reproduce the real callee's register discipline silently violates the ABI on every invocation.
+
+For the indirect version, report the **target VA** rather than a symbol. There is no name available, and the VA is the more useful identifier anyway — it maps straight back to the disassembly and tells you whether the target was ever lifted at all. Deduplicate per target rather than once globally: the first offender would otherwise hide every other one.
+
+Two things to expect in the output.
+
+Lifter fragments will trip it. Recompilers that split functions at branch targets produce fragments whose pushes are matched by a pop in a sibling fragment, so in isolation a fragment looks unbalanced while the pair is fine. Cross-check a name against a static push/pop-pairing analysis before treating it as a bug.
+
+Clusters of near-adjacent addresses — six hits spread over a 0x5C range — are the shape of a thunk family, not six independent defects. Treat the cluster as one finding.
+
+Finally: before building any of this, grep the codebase for it. The project already had both the page-zero trap and the direct-call ABI checker, written earlier and forgotten, and both were nearly reimplemented from scratch. In a long-running investigation the diagnostic you need has often already been built and left behind a compile flag. Search for the flag before writing the tool.
