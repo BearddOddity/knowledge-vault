@@ -10,6 +10,7 @@
 ### Patterns
 - re/patterns/anti-debug.md — IsDebuggerPresent, NtQueryInformationProcess, NtSetInformationThread (ThreadHid… (3 techniques logged)
 - re/patterns/bytecode-vm-crackmes.md — Recognise a VM from the section-size ratio, then attack it one level up: count… (7 techniques logged)
+- re/patterns/code-a-disassembler-never-turned-into-a-function.md — A table nothing appears to write usually has a writer that was never promoted t… (6 techniques logged)
 - re/patterns/console-sdk-coverage-in-ghidra.md — Signature databases and SDK headers are worth far more combined than separately… (7 techniques logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
 - re/patterns/making-a-wsl2-distro-behave-like-a-real-linux-pc.md — systemd via wsl.conf and a clipboard bridge between the nested X server and WSL… (5 techniques logged)
