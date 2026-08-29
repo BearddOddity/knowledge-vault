@@ -14,6 +14,7 @@
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically (1 technique logged)
 
 ### Solved problems
+- re/solved-problems/bfcrackme40-partial.md — UPX-0.82 VB6 P-code crackme: unpacked and valid serials found, but no general keygen yet
 - re/solved-problems/crackme01-pipeline-validation.md — First end-to-end run of the RE pipeline: triage to keygen on a self-authored 32-bit PE
 - re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 
