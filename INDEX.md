@@ -9,6 +9,7 @@
 
 ### Patterns
 - re/patterns/anti-debug.md — IsDebuggerPresent, NtQueryInformationProcess, NtSetInformationThread (ThreadHid… (3 techniques logged)
+- re/patterns/bytecode-vm-crackmes.md — Recognise a VM from the section-size ratio, then attack it one level up: count… (7 techniques logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
 - re/patterns/making-a-wsl2-distro-behave-like-a-real-linux-pc.md — systemd via wsl.conf and a clipboard bridge between the nested X server and WSL… (5 techniques logged)
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
