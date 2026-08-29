@@ -26,6 +26,7 @@
 
 ### Tool notes
 - re/tool-notes/ghidra.md (1 note)
+- re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
 
 ## Last updated: 2026-08-29
