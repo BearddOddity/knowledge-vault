@@ -11,7 +11,7 @@
 - re/patterns/anti-debug.md — IsDebuggerPresent, NtQueryInformationProcess (2 techniques logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
-- re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically (1 technique logged)
+- re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (2 techniques logged)
 
 ### Solved problems
 - re/solved-problems/bfcrackme40-partial.md — UPX-0.82 VB6 P-code crackme: unpacked and valid serials found, but no general keygen yet
