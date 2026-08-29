@@ -17,6 +17,7 @@
 - re/solved-problems/bfcrackme40-keygen.md — Keygen recovered by disassembling VB6 P-code; the check is a string range, not an equality
 - re/solved-problems/bfcrackme40-partial.md — UPX-0.82 VB6 P-code crackme: unpacked and valid serials found, but no general keygen yet
 - re/solved-problems/crackme01-pipeline-validation.md — First end-to-end run of the RE pipeline: triage to keygen on a self-authored 32-bit PE
+- re/solved-problems/keygen-2-by-nicohogtag.md — Shipped STABS debug symbols named every local, turning the check into readable C; the algorithm reads two bytes past its input buffer, so the expected serial depends on the saved EBP.
 - re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 
 ### Tool notes
