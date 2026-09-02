@@ -22,6 +22,7 @@
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
 
 ### Solved problems
+- re/solved-problems/alchemy-class-registry-recovered-from-x-men-legends.md — Recovered 696 class names, their sizes, inheritance and 2,110 attributable functions from the game's own startup registration table, after two external symbol sources had largely failed
 - re/solved-problems/bfcrackme40-keygen.md — Keygen recovered by disassembling VB6 P-code; the check is a string range, not an equality
 - re/solved-problems/bfcrackme40-partial.md — UPX-0.82 VB6 P-code crackme: unpacked and valid serials found, but no general keygen yet
 - re/solved-problems/crackme01-pipeline-validation.md — First end-to-end run of the RE pipeline: triage to keygen on a self-authored 32-bit PE
