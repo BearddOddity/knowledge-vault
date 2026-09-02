@@ -82,3 +82,22 @@ Lifter fragments will trip it. Recompilers that split functions at branch target
 Clusters of near-adjacent addresses — six hits spread over a 0x5C range — are the shape of a thunk family, not six independent defects. Treat the cluster as one finding.
 
 Finally: before building any of this, grep the codebase for it. The project already had both the page-zero trap and the direct-call ABI checker, written earlier and forgotten, and both were nearly reimplemented from scratch. In a long-running investigation the diagnostic you need has often already been built and left behind a compile flag. Search for the flag before writing the tool.
+
+## A pointer that "gets overwritten" is often a freed block, and the allocator is the innocent writer
+
+A field that holds a good pointer, then a bad one, looks like memory corruption and invites a hunt for whoever wrote the bad value. Check first whether the block was **freed** - because then the writer is the allocator doing its job, and the defect is upstream at the free.
+
+Worked example, X-Men Legends wall 42. A holder's field 0 changed `01091B30` -> `0109863C` and the recorded diagnosis was "its table pointer is OVERWRITTEN". It was not:
+
+1. **Read the "overwriting" function.** It was a dlmalloc `free`: chunk header at `param_1-4`, small-bin push `*(chunk+4) = bin[(size>>3)-1]`, backward coalescing, trim. The mystery write was a **free-list link landing in the freed block**.
+2. **Read what the caller passes.** `FUN_0020EEE0` was recorded as "reallocates/shrinks". It actually unlinks a list node and frees its `param_1` - and the caller passed its own `this`, so it freed the holder.
+3. **The corrupted "table header" is allocator metadata.** `count` read as a pointer, `array` as `0x680` - a bin link and a chunk size, read as struct fields.
+
+**The tell.** When a struct's fields read as "one plausible pointer plus one small integer", suspect free-list bookkeeping rather than a half-initialised object. Real uninitialised data is usually zeros or a repeated fill pattern; allocator metadata looks like *almost*-valid pointers.
+
+**Then find the repeat visit, not the writer.** An entry probe showed the same `this` on all three calls to the release function, and `recomp_where` stacks showed the frame pair `sub_001EA640 / sub_001F8180` **repeating verbatim** - depth 0, 1, 2. One recursive teardown releasing the same node once per level; the first release frees it, the rest use it after free.
+
+Comparing whole stacks between a healthy call and the fatal one is what makes this visible. The top frames were identical in all three; only the repeated middle pair distinguished them. A single stack from the fatal call alone would not have shown it.
+
+**Do not guard the reader.** Range-checking the crash site would hide a use-after-free and move the fault somewhere non-deterministic. The fix belongs at whatever causes the second visit.</details>
+</invoke>
