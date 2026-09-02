@@ -2,6 +2,9 @@
 
 ## general
 
+### Patterns
+- general/patterns/tooling-failures.md — Silent hangs and the stale-checkout trap (1 technique logged)
+
 ### Solved problems
 - general/solved-problems/mcp-auto-commit-swept-unrelated-files.md — Auto-commit in an MCP write tool used git add -A and swallowed unrelated work in progress
 
