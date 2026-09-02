@@ -34,6 +34,7 @@
 ### Tool notes
 - re/tool-notes/finding-vtables-without-rtti.md (4 notes)
 - re/tool-notes/ghidra.md (2 notes)
+- re/tool-notes/guest-watchpoints.md (1 note)
 - re/tool-notes/moving-a-ghidra-project-between-machines-or-users.md (7 notes)
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
