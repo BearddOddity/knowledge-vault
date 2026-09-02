@@ -14,7 +14,7 @@
 - re/patterns/console-sdk-coverage-in-ghidra.md — Signature databases and SDK headers are worth far more combined than separately… (7 techniques logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
 - re/patterns/making-a-wsl2-distro-behave-like-a-real-linux-pc.md — systemd via wsl.conf and a clipboard bridge between the nested X server and WSL… (5 techniques logged)
-- re/patterns/naming-a-large-game-binary-at-scale.md — RTTI vtable walking names thousands at once and beats every other source combin… (5 techniques logged)
+- re/patterns/naming-a-large-game-binary-at-scale.md — RTTI vtable walking names thousands at once and beats every other source combin… (6 techniques logged)
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
 - re/patterns/separating-engine-platform-and-game-code-across-binaries.md — One title built for two platforms pins the platform layer exactly; more titles… (6 techniques logged)
 - re/patterns/stabs-debug-symbols-in-mingw-binaries.md — Check for .stab/.stabstr sections before assuming locals are anonymous - GCC/Mi… (1 technique logged)
@@ -37,4 +37,4 @@
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
 
-## Last updated: 2026-08-29
+## Last updated: 2026-09-02
