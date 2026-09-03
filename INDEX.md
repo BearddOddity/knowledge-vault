@@ -8,6 +8,9 @@
 ### Solved problems
 - general/solved-problems/mcp-auto-commit-swept-unrelated-files.md — Auto-commit in an MCP write tool used git add -A and swallowed unrelated work in progress
 
+### Tool notes
+- general/tool-notes/status-page-skill.md (7 notes)
+
 ## re
 
 ### Patterns
@@ -44,4 +47,4 @@
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
 
-## Last updated: 2026-09-02
+## Last updated: 2026-09-03
