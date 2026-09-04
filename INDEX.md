@@ -47,5 +47,6 @@
 - re/tool-notes/moving-a-ghidra-project-between-machines-or-users.md (7 notes)
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
+- re/tool-notes/xemu-oracle.md (1 note)
 
 ## Last updated: 2026-09-04
