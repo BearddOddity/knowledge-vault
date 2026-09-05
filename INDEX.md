@@ -28,6 +28,7 @@
 - re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (4 techniques logged)
 - re/patterns/static-recompilation.md — Deciding which console limits a port may raise (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
+- re/patterns/xmlb-ui-format.md — Alchemy's .XMLB is a compiled binary widget tree, not XML, and the 4:3 layout is hardcoded at 640x480 — the empty space in the Advanced Options menu is not free space, it is undeclared widgets
 
 ### Solved problems
 - re/solved-problems/alchemy-class-registry-recovered-from-x-men-legends.md — Recovered 696 class names, their sizes, inheritance and 2,110 attributable functions from the game's own startup registration table, after two external symbol sources had largely failed
@@ -38,6 +39,7 @@
 - re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 - re/solved-problems/qvm32.md — A bytecode VM whose interpreter hides the password check from x86 tracing; the oracle is VM instructions executed, not x86 instructions.
 - re/solved-problems/x-men-legends-xbox-analysis-campaign.md — Took an Xbox game binary from 714 named functions to 4,560 and split its 15,742 functions into platform, engine and game code, using RTTI vtable walking plus cross-binary hash comparison against four related builds.
+- re/solved-problems/x-men-legends-ii-pc-modernization-campaign.md — X-Men Legends II PC pushed to 4K + 16x MSAA + borderless + ReShade via INI config and external enhancers, no binary patching required
 
 ### Tool notes
 - re/tool-notes/ff-16.md (1 note)

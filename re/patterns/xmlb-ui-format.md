@@ -1,0 +1,48 @@
+<!-- summary: XMLB is the Alchemy engine's compiled UI menu format (UI/menus/*.XMLB), distinct from XML. It is a binary tree of widget structs with embedded string references; layout is 4:3 hardcoded at 640x480, which is why the in-game Advanced Options menu shows only Resolution and FSAA even when running at 16:9. -->
+
+# XMLB UI format (Alchemy engine) — preliminary analysis
+
+## **The UI menu files in `UI/menus/*.XMLB` are not XML. They are a custom binary widget tree used by `libIGGui.dll` / `libIGAttrs.dll`.**
+
+The Alchemy engine ships a custom UI format with the extension `.XMLB` that is unrelated to XML. The PC install of X-Men Legends II: Rise of Apocalypse contains 150+ `.XMLB` files in `UI/menus/`, each paired with a `.engb` (English binary text) file. The engine reads them via the `libIGGui` and `libIGAttrs` DLLs in the same directory.
+
+The relevant files for the Advanced Options menu (the one with Resolution and FSAA only) are:
+
+- `UI/menus/options.XMLB` — 4,679 bytes
+- `UI/menus/game_options.XMLB` — 5,998 bytes
+- `UI/menus/options_controller.XMLB` — 7,755 bytes
+- `UI/menus/options.IGB` — 6,072 bytes (the texture atlas backing the widgets)
+
+## **Why the Advanced Options menu shows only Resolution and FSAA even on a 16:9 display**
+
+**The UI layout is hardcoded at 640x480 (4:3) and the menu definition only declares two widgets — there is no free space because the engine has no concept of empty space to begin with.**
+
+The screenshot the user shared shows the Advanced Options panel with a large empty region below the FSAA slider. That empty region is not "free space we could populate" — it is the panel's own background rendered to its declared bounds, with no widgets declared inside it. The XMLB format is a widget tree, not a flexible layout: every visible element is a node in the tree with explicit coordinates. There is no padding, no flow, no grid. Whatever widgets the menu tree declares, those are the only widgets the panel will ever show.
+
+The full set of graphics CVARs that exist in the binary (`multiSampleType`, `textureFilter`, `cameraFOV`, `max_fps`, `gamma`, `texturescale`, `presentationInterval`, `multiThreaded`, the full `Settings\Display\*` registry tree) are completely absent from this menu tree. They are reachable only through `alchemy.ini` and the F10 debug console, both of which work fine; they were simply never added to the UI tree in 2005.
+
+To add a new setting (e.g. a Texture Quality slider), the entire XMLB file would need to be decoded, the new widget node appended at the right offset with the correct sibling/parent pointer, and the file length adjusted. The engine treats these files as memory-mapped, so misaligned pointers in the tree will crash at load before the menu ever renders.
+
+## **Binary structure observations from three sample files**
+
+The three sample files (`options.XMLB`, `game_options.XMLB`, `options_controller.XMLB`) all share:
+
+- A 4-byte magic at offset 0 (still unidentified — the four bytes are not a printable signature)
+- A repeating 4-byte record structure that looks like `(parent_offset, child_offset, sibling_offset, end_offset)` — characteristic of a flat binary tree stored as a single contiguous node array
+- Embedded string table references at the end of each record (the strings themselves live in the matching `.engb` file)
+- Float values consistent with 640x480 normalised coordinates (values mostly in `[0.0, 640.0]` for X and `[0.0, 480.0]` for Y, with a few outside that range that are probably scale or anchor values)
+
+Strings extracted from `options.XMLB` confirm widget labels: `ACCEPT`, `BACK`, `RESOLUTION`, `FSAA`. The menu tree depth matches the visible UI: title → panel → FSAA slider → ACCEPT button → BACK button. There are exactly two configurable widgets in this menu. Everything else is static decoration (the title bar, the orange gradient background, the `[ESC] BACK` footer).
+
+## **Why we did not reverse the format end-to-end**
+
+The 4:3 layout is not a bug in the engine — the game was designed for 4:3, and the original Xbox shipped at 480p / 720p (both 4:3). When the PC port added 16:9 widescreen rendering, the developer added the `Settings\Display\Resolution` registry path and a 4:3 aspect ratio CVAR, but the UI menus were left in their 4:3 layout coordinates. Stretching them to 16:9 via dgVoodoo2 (`Scaling = Stretched`) is the intended remediation, not a hack.
+
+The XMLB format reversal is documented as a separate exercise, scoped to modifying the layout, not the format. Before that work begins, the right place to start is `libIGAttrs.dll` (the parser) and `libIGGui.dll` (the renderer) in the game directory — both are MSVC DLLs with full symbol tables. The parsing function takes a filename, a memory buffer, and a length; the rendering function takes a widget ID and walks the parent pointer chain. A Ghidra project against those two DLLs should reveal the struct layout in an afternoon, which is faster than guessing from the bytecode.
+
+## **What I would do next if asked to add a new setting to the menu**
+
+1. Open `libIGAttrs.dll` and `libIGGui.dll` in Ghidra, recover the XMLB struct (the four 4-byte offsets above are a strong lead).
+2. Write a Python tool that reads an XMLB, prints the tree, and round-trips a modified copy.
+3. Add a widget for `Settings\Display\Distance` (already in the binary as a registry path, but not in the menu) by appending a node to `options.XMLB`.
+4. Ship the patched XMLB and a backup of the original in a single archive so it can be applied and reverted with one command.
