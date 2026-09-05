@@ -48,6 +48,6 @@
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (1 note)
 - re/tool-notes/xemu-oracle.md (1 note)
-- re/tool-notes/xml2-pc-oracle.md (1 note)
+- re/tool-notes/xml2-pc-oracle.md (2 notes)
 
 ## Last updated: 2026-09-05

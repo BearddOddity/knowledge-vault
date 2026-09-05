@@ -18,3 +18,13 @@ Usage:
 
     py -3 tools/rtti/xml2_pc.py <XMen2.exe> -o build/xml2_rtti.json \
         --compare build/rtti.json --map-out build/xml1_xml2_class_map.json
+
+## **Correction to the worked example in the previous note.**
+
+**Correction to the worked example in the previous note.**
+
+The previous note illustrated the slot-transfer caveat with a crash "on a `call [vtable+0xCC]` (slot 51)" in `sub_001E8BE0`. That function name was wrong, and so was the crash it described. It came from resolving the crash handler's printed RVAs against the linker map's FIRST column, which is section-relative and sits 0x1000 below the true RVA - the map row is `0001:0106ce50  sub_0020ADF0  000000014106de50` against a preferred load address of 0x140000000. Reading column one names the function BELOW the true one. Probes at the entry of the wrongly-named function and its callee never fired across two builds while the crash reproduced identically; a probe at the correctly-resolved function fired at once. The real site was `sub_0020AA90 +0x6E2`, and its dispatch is through slot 0x1A8, not 0xCC.
+
+**What survives unchanged, because it never depended on that name:** of the 412 class names XML1 Xbox and XML2 PC share, only 193 have the same vtable slot count, so a slot index transfers for those and silently lies for the other 219. That comes from comparing the two RTTI tables directly (`build/xml1_xml2_class_map.json`), not from any crash.
+
+**What to take from the correction itself:** an oracle that names a function is only as good as the address you feed it. Before spending a cross-binary comparison on a site, prove the site with a probe - a function that never executes cannot be where the fault is, and that check costs one build.
