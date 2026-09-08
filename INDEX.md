@@ -9,6 +9,7 @@
 - general/solved-problems/mcp-auto-commit-swept-unrelated-files.md — Auto-commit in an MCP write tool used git add -A and swallowed unrelated work in progress
 
 ### Tool notes
+- general/tool-notes/game-engine-mcp.md (6 notes)
 - general/tool-notes/status-page-skill.md (7 notes)
 
 ## re
@@ -28,7 +29,7 @@
 - re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (4 techniques logged)
 - re/patterns/static-recompilation.md — Deciding which console limits a port may raise (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
-- re/patterns/xmlb-ui-format.md — Alchemy's .XMLB is a compiled binary widget tree, not XML, and the 4:3 layout is hardcoded at 640x480 — the empty space in the Advanced Options menu is not free space, it is undeclared widgets
+- re/patterns/xmlb-ui-format.md — XMLB is the Alchemy engine's compiled UI menu format (UI/menus/*.XMLB), distinct from XML. It is a binary tree of widget structs with embedded string references; layout is 4:3 hardcoded at 640x480, which is why the in-game Advanced Options menu shows only Resolution and FSAA even when running at 16:9. (5 techniques logged)
 
 ### Solved problems
 - re/solved-problems/alchemy-class-registry-recovered-from-x-men-legends.md — Recovered 696 class names, their sizes, inheritance and 2,110 attributable functions from the game's own startup registration table, after two external symbol sources had largely failed
@@ -38,10 +39,11 @@
 - re/solved-problems/keygen-2-by-nicohogtag.md — Shipped STABS debug symbols named every local, turning the check into readable C; the algorithm reads two bytes past its input buffer, so the expected serial depends on the saved EBP.
 - re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 - re/solved-problems/qvm32.md — A bytecode VM whose interpreter hides the password check from x86 tracing; the oracle is VM instructions executed, not x86 instructions.
+- re/solved-problems/x-men-legends-ii-pc-modernization-campaign.md — X-Men Legends II: Rise of Apocalypse (PC, 2005) was modernized to 4K + 16x MSAA + borderless windowed + ReShade post-processing + dgVoodoo2, all via INI config and external enhancers — no binary patching, no XMLB UI modification.
 - re/solved-problems/x-men-legends-xbox-analysis-campaign.md — Took an Xbox game binary from 714 named functions to 4,560 and split its 15,742 functions into platform, engine and game code, using RTTI vtable walking plus cross-binary hash comparison against four related builds.
-- re/solved-problems/x-men-legends-ii-pc-modernization-campaign.md — X-Men Legends II PC pushed to 4K + 16x MSAA + borderless + ReShade via INI config and external enhancers, no binary patching required
 
 ### Tool notes
+- re/tool-notes/alchemy-sdk.md (1 note)
 - re/tool-notes/ff-16.md (1 note)
 - re/tool-notes/finding-vtables-without-rtti.md (4 notes)
 - re/tool-notes/ghidra.md (2 notes)
@@ -52,4 +54,4 @@
 - re/tool-notes/xemu-oracle.md (1 note)
 - re/tool-notes/xml2-pc-oracle.md (2 notes)
 
-## Last updated: 2026-09-05
+## Last updated: 2026-09-08
