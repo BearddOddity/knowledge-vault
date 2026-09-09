@@ -21,6 +21,7 @@
 - re/patterns/console-sdk-coverage-in-ghidra.md — Signature databases and SDK headers are worth far more combined than separately… (8 techniques logged)
 - re/patterns/debugging-method.md — Validating a backtrace before you believe it (and before you retract on it) (1 technique logged)
 - re/patterns/ghidra-decompilation.md — Varargs hide arithmetic until the prototype is set (1 technique logged)
+- re/patterns/igb-model-scene-format.md — Header, meta-field table, class table, and object directory (Alchemy IGB) (1 technique logged)
 - re/patterns/making-a-wsl2-distro-behave-like-a-real-linux-pc.md — systemd via wsl.conf and a clipboard bridge between the nested X server and WSL… (5 techniques logged)
 - re/patterns/naming-a-large-game-binary-at-scale.md — RTTI vtable walking names thousands at once and beats every other source combin… (6 techniques logged)
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
