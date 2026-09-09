@@ -29,7 +29,7 @@
 - re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (4 techniques logged)
 - re/patterns/static-recompilation.md — Deciding which console limits a port may raise (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
-- re/patterns/xmlb-ui-format.md — XMLB is the Alchemy engine's compiled UI menu format (UI/menus/*.XMLB), distinct from XML. It is a binary tree of widget structs with embedded string references; layout is 4:3 hardcoded at 640x480, which is why the in-game Advanced Options menu shows only Resolution and FSAA even when running at 16:9. (5 techniques logged)
+- re/patterns/xmlb-ui-format.md — **The UI menu files in `UI/menus/*.XMLB` are not XML. They are a custom binary… (6 techniques logged)
 
 ### Solved problems
 - re/solved-problems/alchemy-class-registry-recovered-from-x-men-legends.md — Recovered 696 class names, their sizes, inheritance and 2,110 attributable functions from the game's own startup registration table, after two external symbol sources had largely failed

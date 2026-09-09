@@ -1,4 +1,4 @@
-<!-- summary: XMLB is the Alchemy engine's compiled UI menu format (UI/menus/*.XMLB), distinct from XML. It is a binary tree of widget structs with embedded string references; layout is 4:3 hardcoded at 640x480, which is why the in-game Advanced Options menu shows only Resolution and FSAA even when running at 16:9. -->
+<!-- summary: **The UI menu files in `UI/menus/*.XMLB` are not XML. They are a custom binary… -->
 
 # XMLB UI format (Alchemy engine) — preliminary analysis
 
@@ -46,3 +46,21 @@ The XMLB format reversal is documented as a separate exercise, scoped to modifyi
 2. Write a Python tool that reads an XMLB, prints the tree, and round-trips a modified copy.
 3. Add a widget for `Settings\Display\Distance` (already in the binary as a registry path, but not in the menu) by appending a node to `options.XMLB`.
 4. Ship the patched XMLB and a backup of the original in a single archive so it can be applied and reverted with one command.
+
+## Format fully solved: magic, node layout, string table, byte-identical round trip
+
+Follow-up to the preliminary analysis above: the format is now fully reverse-engineered and re-implemented, not just partially understood.
+
+**Header**: `u32 magic = 0x000011B1` at offset 0 (the preliminary note's "4-byte magic, still unidentified" - now identified), `u32 version` at offset 4.
+
+**Node layout** (repeats, 16-byte fixed header + attr pairs): `{ name_offset: u32, next_offset: u32, first_child_offset: u32, attr_count: u32 }`, followed by `attr_count` pairs of `{ key_offset: u32, value_offset: u32 }`. All offsets point into a shared string table at the end of the file. `0xFFFFFFFF` is the "none" sentinel for `next_offset`/`first_child_offset`.
+
+**Top level is a sibling chain, not one root.** Parsing starts at offset 8 and walks `next_offset` across however many top-level trees the file has (most files have one; some have several, e.g. concatenated menu fragments).
+
+**String table is deduplicated at first pre-order occurrence** - a string used by five different nodes is stored once, and every reference points at that one offset. Building a writer that doesn't dedupe would still round-trip a stock file (since the reader doesn't care about duplicates) but would silently double the file size on every re-save, which is how such a bug would actually surface.
+
+**Known-corrupt fixture example**: `options_patched.XMLB` has a bad root `first_child_offset` that doesn't land on a real node header. Correctly rejecting this (not silently misreading it as a plausible-but-wrong node) needs an attribute-count sanity bound in the node parser - without one, garbage bytes at the wrong offset can look like a node with an absurd attribute count and the parser will try to read attribute pairs until it walks off the end of the file.
+
+**Verification**: implemented in C# (`Athanor.Alchemy/Xmlb.cs`, part of a Prowl-engine-based editor rewrite of the "Athanor" X-Men Legends II modding toolkit) and round-tripped byte-identical against all 5,883 real files across every XMLB-family extension in a retail install (`.XMLB .PKGB .engb .CHRB .NAVB .BOYB .itab` all share this one container format under different extensions - detection must be by magic, not extension, since at least one sample file with an XMLB extension turned out to hold something else entirely, opening with `{`).
+
+**Wired into a real running editor**: import → browse as a tree widget → select a node → edit its name/attributes → Save rebuilds the tree to bytes and overwrites the source file, verified live (not just unit-tested) against `options.XMLB`'s actual 104 nodes and `game_options.XMLB`, confirming the loop actually works end-to-end in a GUI, not just at the byte level.
