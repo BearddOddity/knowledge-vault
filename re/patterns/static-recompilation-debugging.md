@@ -113,3 +113,15 @@ Fix: one-line, `max_addr = target + 1`. Recovered 244 KB of function bodies, cut
 Diagnosis method: when a regen makes coverage collapse, do NOT assume the new seed data is bad - diff the GENERATED C for a known-good function across old vs new build first. Found the CRT init function's tail was missing a whole basic block that existed pre-regen, then read the extent-detection code directly rather than guessing from symptoms.
 
 Sibling bug found same session: lifter's `neg` instruction never wrote the carry flag it produces, so a following `sbb reg,reg` (common "set to 0 or -1 based on comparison" idiom) always read a stale/zero carry. Fixed by threading carry-out through neg's codegen. Both bugs are the same class: a lifter/walker silently drops a bound or a flag rather than erroring, so it only shows up as behavior loss several call-frames downstream.
+
+## esp-depth census: judge a call site against its OWN callee's epilogue, not a fixed constant
+
+A per-call-site esp-depth check is useless if it compares against a hardcoded expectation - real code has `ret`, `ret 4`, `ret 8`, `ret N` callees that ALL legitimately return at different depths. First version of this check expected `N-4` universally and flagged 1,659 of 1,832 sites - that's a broken check, not a broken program.
+
+Correct form: for every executed direct call site, record the esp depth the call returned at. Separately, parse every generated function body for its own `esp += N; return;` epilogue lines (a function can have several epilogues via multiple returns/tail branches - they should agree). A site is broken only if the returned depth does not match ANY of its callee's own declared epilogue deltas.
+
+With the corrected check: 4 of 1,832 executed call sites failed. Two of those were the actual stack-leak bug being hunted (found independently by an ABI register-preservation checker naming the same two functions as "did not restore ebx/esi/edi") - cross-confirmation from two unrelated instruments landing on the same two functions is strong evidence, not coincidence.
+
+Tool: `depth_audit.py` - reads an ABI-build stderr log (site, callee, returned-depth triples) plus the generated source tree, cross-references, reports mismatches sorted by magnitude.
+
+General lesson: any "does this function balance the stack" check needs the callee's OWN contract as ground truth, not an assumed convention (cdecl/stdcall/N-args). A generated/recompiled callee may legitimately clean up any amount depending on what the original instruction stream did.
