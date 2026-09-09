@@ -101,3 +101,15 @@ Comparing whole stacks between a healthy call and the fatal one is what makes th
 
 **Do not guard the reader.** Range-checking the crash site would hide a use-after-free and move the fault somewhere non-deterministic. The fix belongs at whatever causes the second visit.</details>
 </invoke>
+
+## function-extent off-by-one truncates code silently
+
+Recompiler's function-end walker follows a forward conditional jump to extend bounds past a `ret`, but set `max_addr = target` instead of `target + 1`. A `ret` sitting immediately BEFORE the jump target then satisfies "covered every jump target we saw" and the walk stops one instruction early. The whole block the jump lands on never gets claimed - becomes an unresolved stub, silently dropped.
+
+Impact (X-Men Legends Xbox->PC static recompilation): a CRT `_initterm`-style static-init walker got truncated this way. Regenerating with a larger seed list collapsed reached-function coverage from 853 to 7 (87M+ rejected indirect calls) because the init table walk spun on garbage once its continuation vanished.
+
+Fix: one-line, `max_addr = target + 1`. Recovered 244 KB of function bodies, cut unresolved-stub count 2,819 -> 407, and (combined with two sibling lifter fixes) took coverage 853 -> 957 reached with ZERO regressions - every function reached before was still reached after.
+
+Diagnosis method: when a regen makes coverage collapse, do NOT assume the new seed data is bad - diff the GENERATED C for a known-good function across old vs new build first. Found the CRT init function's tail was missing a whole basic block that existed pre-regen, then read the extent-detection code directly rather than guessing from symptoms.
+
+Sibling bug found same session: lifter's `neg` instruction never wrote the carry flag it produces, so a following `sbb reg,reg` (common "set to 0 or -1 based on comparison" idiom) always read a stale/zero carry. Fixed by threading carry-out through neg's codegen. Both bugs are the same class: a lifter/walker silently drops a bound or a flag rather than erroring, so it only shows up as behavior loss several call-frames downstream.
