@@ -771,3 +771,71 @@ the ~20k pending functions, fill the last 0.4 % of instructions, chase guest
 faults. The `rex::codegen` port itself — analysis, emitter, config, a runtime
 that assembles and runs the output — is complete. `PORTING.md` has the
 file-by-file status.
+
+## ## The C branch — a second full port, in C (2026-09-10)
+
+## The C branch — a second full port, in C (2026-09-10)
+
+The user meant "C" when they said "C#" for the OG_reXcompiler port. Rather than
+discard the working C# tool, it was branched: `csharp` keeps it, and `c` is a
+from-scratch C11 re-port of the same recompiler. `main` == `csharp`. Both push
+to `github.com/BearddOddity/OG_reXcompiler`. The tool's implementation language
+does not affect the output — ReXGlue is C++, XenonRecomp is C++, the recompiled
+title is C regardless.
+
+### C-branch stack
+
+- **x86 decode:** Zydis (git submodule) instead of iced-x86. `ZydisDecoderDecodeFull`
+  → a reduced `DecodedInsn` (flow class + target + text), address-cached.
+  `db_decode_raw` exposes the full `ZydisDecodedInstruction` + operands for
+  jump-table analysis and the emitter.
+- **TOML:** tomlc99 (git submodule) instead of Tomlyn.
+- **Build:** CMake + clang-cl (LLVM 22) + VS BuildTools. `git submodule update
+  --init --recursive` first (Zydis pulls zycore).
+- **C stand-ins for the BCL:** `util.h` — `VEC(T)` growable array macro,
+  `u32map` open-addressing hash map/set, `strbuf`. **Gotcha that cost an hour:**
+  `u32map_init` MUST round capacity up to a power of two or the `& (cap-1)`
+  probe mask is wrong and lookups spin forever. This hung the whole pipeline
+  until found.
+
+### Port map (`c` file ← C# file)
+
+`xbe.c` ← Xbe.cs · `kernel_exports.c` ← XboxKernelExports.cs (371 ordinals) ·
+`binary_view.c` ← BinaryView.cs · `decoded.c` ← DecodedBinary.cs +
+DecodedInstruction.cs · `func_types.h` ← FunctionTypes.cs · `func_graph.c` ←
+FunctionNode.cs + FunctionGraph.cs · `scanners.c` ← VtableScanner.cs +
+SigScanner.cs · `func_scanner.c` ← FunctionScanner.cs · `config.c` ←
+RecompilerConfig{,Loader}.cs · `context.c` ← CodegenContext.cs +
+AnalysisErrors.cs · `phases.c` ← Phases.cs + ScanPhase.cs + PhaseHelpers.cs ·
+`emit_operand.c` ← COperand.cs · `emit.c` ← CEmitter.cs · `writers.c` ←
+ImageWriter.cs + CodegenWriter.cs + GraphExporter.cs · `main.c` ← Program.cs.
+`runtime/` is unchanged (already C).
+
+### C translation notes
+
+- `CallTarget` discriminated record → a tagged struct `{kind, node, address, name}`.
+- C# `Dictionary`/`HashSet`/LINQ → explicit loops over `u32map` slots.
+- Nested-function closures (`IsInternalTarget`, `Enqueue` inside
+  `DiscoverBlocks`) → an explicit `DiscCtx` struct passed to file-scope helpers
+  (clang has no nested functions).
+- `VEC(T)` expands to a fresh anonymous struct type each use — two `VEC(Block)`
+  are incompatible for assignment. Fix: `typedef VEC(Block) BlockVec;` for any
+  vec that gets assigned or stored in a struct.
+- Perf: added `unresolved_by_target` (target addr → list of node bases with an
+  unresolved jump there) so `fg_notify_added` is O(matches) not O(functions);
+  `sorted_bases` is kept incrementally sorted (binary-insert) instead of
+  re-sorting on every add. Without these the fixed-point loop was O(f²)+.
+
+### Verified
+
+`ogxbox emit` on X-Men `default.xbe`: 28,266 functions analysed, 17,124
+emitted, 888,874 instructions, **99.7% lowered**. The 43-file output compiles
+with clang-cl at **0 errors** (~136 s), links, and **runs** — guest boots, runs
+CRT init, calls `Nt*SymbolicLinkObject`, stops at the same NULL-StartRoutine
+wall as the C# branch (XAPI init HLE still a stub).
+
+### Delta from `csharp`
+
+The C analysis finds ~28k functions vs the C#'s ~39k — its fixed-point
+discovery ends a round earlier and a few jump-table forms are less aggressive.
+Instruction-lowering coverage is the same. `BRANCHES.md` in the repo tracks it.
