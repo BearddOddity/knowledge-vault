@@ -44,6 +44,7 @@
 - re/solved-problems/qvm32.md — A bytecode VM whose interpreter hides the password check from x86 tracing; the oracle is VM instructions executed, not x86 instructions.
 - re/solved-problems/x-men-legends-ii-pc-modernization-campaign.md — X-Men Legends II: Rise of Apocalypse (PC, 2005) was modernized to 4K + 16x MSAA + borderless windowed + ReShade post-processing + dgVoodoo2, all via INI config and external enhancers — no binary patching, no XMLB UI modification.
 - re/solved-problems/x-men-legends-xbox-analysis-campaign.md — Took an Xbox game binary from 714 named functions to 4,560 and split its 15,742 functions into platform, engine and game code, using RTTI vtable walking plus cross-binary hash comparison against four related builds.
+- re/solved-problems/xbox-recomp-config-function-list-splits-leak-guest-stack.md — A recompiler that honors a disassembler's function list verbatim truncates real functions at cold-path/epilogue split points, turning local jumps into stack-leaking tail dispatches; a pre-discovery coalesce pass folds the fragments back.
 - re/solved-problems/xbox-recomp-stack-leak-traced-to-two-functions.md — Traced a container/pointer corruption wall in the X-Men Legends recompilation down through 5+ hops of indirect dispatch to a 4-byte guest-stack leak in two specific functions, confirmed by two independent instruments naming the same pair.
 
 ### Tool notes
