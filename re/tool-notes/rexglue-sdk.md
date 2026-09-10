@@ -338,3 +338,203 @@ caller's bounds → `InternalLabel`. Else `Unknown`.
   cross-region, has-prologue) maps almost 1:1 to x86.
 - **Null-word region segmentation** the x86 recomp already half-relies on
   ("low memory reading zero is the invariant"); make it an explicit Scan phase.
+
+## ## The runtime half — blueprint for a wider OG Xbox recomp…
+
+## The runtime half — blueprint for a wider OG Xbox recomp SDK
+
+Read of `include/rex/runtime.h`, `rex_app.h`, `system/` (kernel_state,
+kernel_module, function_dispatcher, export_resolver, interfaces/*),
+`kernel/xboxkrnl/`, `filesystem/`, `system/util/object_table.h`. ReXGlue's
+runtime is a full Xenia-derived console layer, not a shim pile. The
+*architecture* is what a reusable "OG Xbox recomp SDK" runtime should copy;
+only the ISA/GPU/kernel *contents* differ. 360 term -> OG Xbox equivalent noted
+throughout.
+
+### Top level — `Runtime` + dependency injection
+
+`Runtime` owns, as `unique_ptr`s: `Memory`, `FunctionDispatcher`,
+`VirtualFileSystem`, `KernelState`, `IGraphicsSystem`, `IAudioSystem`,
+`IInputSystem`, `ExportResolver`. Global `Runtime::instance()` after `Setup()`.
+
+**`RuntimeConfig`** is pure DI — the caller supplies backends as factories, so
+the runtime library never links a concrete D3D/SDL/Vulkan:
+```
+struct RuntimeConfig {
+  unique_ptr<IGraphicsSystem> graphics;         // or a gpu_plugin string
+  function<unique_ptr<IAudioSystem>(FunctionDispatcher*)> audio_factory;
+  function<unique_ptr<IInputSystem>(bool tool_mode)>       input_factory;
+  function<void(Runtime*, KernelState*)>                    kernel_init;
+  bool tool_mode;   // true -> skip GPU, for analysis tools
+};
+```
+Macros `REX_GRAPHICS_BACKEND(T)` / `REX_AUDIO_BACKEND(T)` / `REX_INPUT_BACKEND`
+just wrap the factory lambdas. `tool_mode` lets the same runtime power a
+headless CLI analyzer.
+
+Setup order: `Setup(image_info, config)` -> `InitializeFunctionTable` ->
+`SetupVfs` (mount `game_data_root` as `game:` / `d:`, `update_data_root` as
+`update:`) -> kernel -> graphics -> audio -> input -> `LoadXexImage` ->
+`PrepareModuleLaunch` (suspended main thread) -> hooks -> `Resume`.
+**OG Xbox:** `LoadXexImage` -> load XBE; `d:` mount is already how the OG title
+sees the disc; add `T:`/`U:`/`Z:` for HDD partitions.
+
+### `ReXApp` — per-title customization without forking the SDK
+
+Base class; `OnInitialize()` runs fixed phases (SetupEnvironment ->
+SetupPresentation -> OnFinalizePaths -> ConstructRuntime -> LaunchModule).
+~20 protected virtual hooks a title subclass overrides selectively:
+`OnPreSetup(RuntimeConfig&)`, `OnLoadXexImage`, `OnPostLoadXexImage` (data
+patches, achievements), `OnPreLaunchModule` (last-chance guest memory/code
+patch), `OnPostLaunchModule(XThread*)` (attach monitors — thread is suspended),
+`OnGuestThreadExit`, `OnConfigurePaths`, `OnConfigureFonts/Style`,
+`OnCreateImmediateDrawer` ("bring your own renderer" — SDK runs with
+`graphics == nullptr` and the app presents the guest itself).
+`REX_DEFINE_APP(name, Create)` in main.cpp. **This is the model for
+per-game overrides** — the X-Men recomp's `recomp_manual.c` hand-patches and
+`main.c` boot-flag pokes become typed hook overrides.
+
+### `FunctionDispatcher` — the icall / cross-module core
+
+- Per-module **dense function table** at `IMAGE_BASE + IMAGE_SIZE`, sized to
+  the whole code range; `SetFunction(guest_addr, PPCFunc*)` fills it,
+  `GetFunction(guest_addr)` reads it. `InitializeFunctionTable(code_base,
+  code_size, image_base, image_size, is_entrypoint)`.
+- `kThunkReserveSize = 0x10000` per module for dynamically-allocated thunks
+  (`AllocateThunk(func, caller_address)` — `caller_address==0` = host-initiated,
+  routes to the entrypoint pool).
+- `Execute` / `ExecuteInterrupt` / `ExecuteTrap` — the last mirrors the 360
+  kernel's trap-frame APC delivery: run guest code on a thread already running
+  guest code, then restore its full register state.
+- `RegisterModule(id, code_base, RegisterFn)` / `UnregisterModule` for
+  hot-loadable generated DLLs, with per-(caller,ordinal) thunk-cache
+  invalidation on unload.
+- `FindCallerModuleBase(addr)` -> which module owns an address.
+
+**OG Xbox:** replace the icall fallback that the X-Men recomp hand-rolls
+(`RECOMP_ICALL` doing `g_esp += 4; eax = 0`) with exactly this: a dense
+`func_table[(addr - CODE_BASE)]` + a resolver for out-of-range / unregistered.
+
+### `ExportResolver` — HLE kernel exports
+
+- `Export{ uint16 ordinal; Type{Function,Variable}; char name[96]; uint32 tags }`.
+  Tags: `kImplemented / kStub / kSketchy / kHighFrequency / kImportant /
+  kBlocking / kLog / kLogResult`, plus an `ExportCategory` (Audio, FileSystem,
+  Input, Memory, Threading, Video, ...). Packed tag word carries category in
+  bits 16-23.
+- Per-module tables (`ExportResolver::Table{module_name, exports_by_ordinal,
+  exports_by_name}`), declared in `module_export_groups.inc` via
+  `XE_MODULE_EXPORT_GROUP(xboxkrnl, Threading)` etc. — one `.inc`, included
+  many times with different macro definitions to build the ordinal table, the
+  name table, the registration calls.
+- `GetExportByOrdinal(module, ordinal)`, `SetVariableMapping` (writes a guest
+  address for an imported *variable*).
+
+**OG Xbox:** the module set is different — `xboxkrnl.exe` ordinals (there is
+one canonical ordinal->name list), plus `d3d8.dll`, `dsound.dll`, `xapilib`,
+`xonline`. The `.inc`-multi-include table-builder trick transfers verbatim.
+
+### HLE export implementation pattern
+
+Each kernel function is a **plain C++ function with a natural signature**, using
+guest-pointer smart types:
+```
+u32 ExCreateThread_entry(mapped_u32 handle_ptr, u32 stack_size,
+                         mapped_u32 thread_id_ptr, u32 xapi_thread_startup,
+                         mapped_void start_address, mapped_void start_context,
+                         u32 creation_flags) { ... return X_STATUS; }
+REX_EXPORT(__imp__ExCreateThread, ...::ExCreateThread_entry)
+```
+`mapped_u32` / `mapped_void` carry both a host pointer and `.guest_address()`.
+`REX_EXPORT` runs the `HostToGuestFunction<Func>` template (see the earlier
+note): it reads args from the guest context by ABI ordinal, calls the C++
+function, writes the return to the return register. A stub is just a function
+that logs and returns a plausible `X_STATUS`. `REXKRNL_IMPORT_TRACE` /
+`_IMPORT_RESULT` for per-call logging gated on the tag.
+
+**OG Xbox:** identical shape, x86 `__stdcall`/`__cdecl` arg marshalling instead
+of PPC r3-r10. The X-Men recomp already does this by hand per shim; the
+template + `.inc` table generalizes it.
+
+### `KernelState` + `ObjectTable` + `XObject`
+
+- `KernelState` holds: `memory()`, `object_table()`, title process / system
+  process, executable module, TLS layout.
+- `ObjectTable`: `AddHandle(XObject*, X_HANDLE*)`, `Duplicate/Retain/Release/
+  RemoveHandle`, `GetObjectByName`, `LookupObject<T>(handle)` (type-checked via
+  `T::kObjectType`), `Save`/`Restore` (savestates). Refcounted `object_ref<T>`.
+- `XObject` subclasses: `XThread, XEvent, XMutant, XSemaphore, XTimer, XFile,
+  XModule, XSymbolicLink, XNotifyListener, XSocket, XIoCompletion, ...` — each a
+  guest handle + optional named registry entry + guest-side dispatcher-header
+  object.
+
+**OG Xbox:** same object model — `Nt*`/`Ke*`/`Ob*` create/wait/close, dispatcher
+objects, `OBJECT_ATTRIBUTES` with a name. Fewer objects (no XAM), plus the OG
+`Ke`-level APIs the 360 hid.
+
+### `VirtualFileSystem` — device model
+
+`VFS` = list of `Device`s (each `mount_path` like `game:`, `d:`, `hdd:`) +
+symlink map. `Device` virtual interface: `Initialize`, `ResolvePath`,
+`is_read_only`, allocation-unit / sector geometry (for `NtQueryVolumeInfo`).
+Concrete devices: `DiscImageDevice` (XISO), `HostPathDevice` (a host dir),
+`StfsContainerDevice` (360 STFS), `NullDevice`. `OpenFile(root, path,
+disposition, access, ...)` -> `File*`.
+
+**OG Xbox:** drop STFS. Add a **FATX device** (for HDD partition images) and
+keep the XISO (`DiscImageDevice`) and `HostPathDevice`. Mount `D:` = disc,
+`T:`/`U:`/`Z:` = HDD, `Y:` = dashboard. FATX has 42-char names, `-` allowed,
+specific attribute bits.
+
+### `IGraphicsSystem` — the GPU seam
+
+Two-call setup: `SetupPresentation(app_context)` (build provider + swapchain +
+ImGui) then `SetupGuestGpu(function_dispatcher, kernel_state)` (wire MMIO,
+command processor, vsync worker into guest address space). Guest-facing hooks:
+`SetInterruptCallback(cb, user_data)`, `InitializeRingBuffer(ptr, size_log2)`,
+`EnableReadPointerWriteBack`, `InitializeShaderStorage(cache_root, title_id)`.
+Backends: D3D12 and Vulkan command processors, each translating the Xenos
+register/packet stream and ucode shaders (DXBC + SPIRV translators).
+
+**OG Xbox:** the seam is the same, the contents change a lot. OG Xbox is
+**NV2A + a fixed-function-ish D3D8**. Two viable backends:
+(a) HLE the D3D8 API surface (like the X-Men recomp's `d3d8_shim.c`) — translate
+`IDirect3DDevice8` calls to D3D11/12 or Vulkan; much less work, no pushbuffer
+interpreter.
+(b) NV2A pushbuffer + register emulation (like nv2a in xemu) — faithful but
+heavy, and Rule #11 of the X-Men project forbids it for that title.
+The `IGraphicsSystem` interface accommodates either; `tool_mode`/headless and
+"bring your own renderer" already exist.
+
+### `IAudioSystem` / `IInputSystem`
+
+Deliberately tiny: `Setup(KernelState*)` / `Shutdown`. Audio backend (SDL) owns
+the mixer + an XMA decoder + XMA register file (context array the guest DMAs
+to). Input backend owns SDL/XInput/MnK drivers merged into per-slot state.
+
+**OG Xbox:** audio is DirectSound + optional XMA/ADPCM/WMA; input is the OG
+gamepad (`XInputGetState` predecessor, `IDirectInput8` on some). Same seam.
+
+### Memory model
+
+`Memory` gives `virtual_membase()`; guest pointers are `GuestPtr<T>(base, addr)`
+= `base + addr` reinterpreted, with mirrored views for the console's aliased
+physical/virtual ranges and endian wrappers (`be<T>`). **OG Xbox is
+little-endian** — no byte-swap layer needed, which removes a whole class of the
+360 port's complexity. Physical RAM 64 MB (retail) / 128 MB (devkit), the
+mirror-modulo arithmetic the X-Men recomp already models.
+
+### What an "OG Xbox Recomp SDK" would be, concretely
+
+Fork this layout:
+- `codegen/` — swap the PPC lifter for the X-Men project's x86 lifter (its
+  `tools.recomp`), keep the FunctionGraph / 6-phase analysis (see the deep-dive
+  note — it is the fix for that project's discovery problems).
+- `runtime/` — keep `Runtime` + DI + `FunctionDispatcher` + `ExportResolver` +
+  `VFS` + `ObjectTable` + `KernelState` verbatim in shape; fill with OG Xbox
+  `xboxkrnl` ordinals, a FATX device, a D3D8-HLE `IGraphicsSystem`, a
+  DirectSound `IAudioSystem`, an OG-gamepad `IInputSystem`.
+- `app/` — `ReXApp` equivalent; each recompiled title is a small subclass with
+  hook overrides instead of a patched `recomp_manual.c`.
+- Drop: byte-swap layer, STFS, XAM/XBLA, Xenos/ucode. Add: FATX, D3D8 surface,
+  the OG dashboard `Y:` mount.
