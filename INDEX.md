@@ -56,7 +56,7 @@
 - re/tool-notes/qt6-gui-apps-under-wslg.md (1 note)
 - re/tool-notes/re-lab-mcp.md (2 notes)
 - re/tool-notes/recomp-stack-tracing-instruments.md (1 note)
-- re/tool-notes/rexglue-sdk.md (19 notes)
+- re/tool-notes/rexglue-sdk.md (21 notes)
 - re/tool-notes/xemu-oracle.md (1 note)
 - re/tool-notes/xml2-pc-oracle.md (2 notes)
 

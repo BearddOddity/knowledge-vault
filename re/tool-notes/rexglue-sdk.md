@@ -714,3 +714,60 @@ Still not compiled — no C compiler in the work environment. The kernel HLE is 
 skeleton; a working port grows it into the object table / thread scheduler /
 FATX VFS / D3D8-HLE / DirectSound layer (much of which already exists as C in
 the X-Men repo). `PORTING.md` in the SDK has the current file-by-file status.
+
+## ## Port compile-verified — recompiled X-Men Legends boots a…
+
+## Port compile-verified — recompiled X-Men Legends boots and runs (2026-09-10, cont.)
+
+The C#/x86 port (`D:\My apps\og-xbox-recomp-sdk`, 16 commits) now produces
+output that a C compiler accepts and that executes.
+
+**Toolchain (Windows):** clang-cl from LLVM 22 (`C:\Program Files\LLVM\bin`,
+not on PATH) + VS 18 Community BuildTools MSVC 14.51.36231 + Windows SDK
+10.0.26100. Set `INCLUDE = <MSVC>\include;<SDK>\Include\<ver>\{ucrt,shared,um}`
+and `LIB = <MSVC>\lib\x64;<SDK>\Lib\<ver>\{ucrt,um}\x64`; then `clang-cl /c`
+each `.c`, `clang-cl /Fe:recomp.exe *.obj`.
+
+**Result on X-Men `default.xbe`:** `ogxbox emit` → 45 C files / ~19 MB → **0
+compile errors** (166 s) → links to a 22 MB `recomp.exe` → **runs**. The guest
+boots, runs its CRT + engine init, spawns its main thread via
+`PsCreateSystemThreadEx`, and executes real game code on that thread until it
+hits a null indirect call (an uninitialized vtable slot from incomplete HLE —
+`rex_dispatch(0)` logs and returns, non-fatal). This is the same "boots, runs,
+faults deep in game code" state the hand-rolled X-Men Python recomp took months
+to reach — the generated code itself is sound.
+
+**Two emitter bugs the compiler caught (both fixed):**
+1. `goto` / `call` to an address with no emitted `loc_X:` label and no declared
+   function (a jump into another function's body, a non-sealed call target).
+   `CEmitter` now precomputes the exact set of emitted labels; anything outside
+   it routes through `rex_dispatch(0xTARGET)` (loud fail if unmapped) instead of
+   naming an undeclared symbol.
+2. Guest RAM was sized to the image (~4 MB) so the first `push` (stack at a high
+   VA) was an access violation. Now 64 MB (retail Xbox), `esp` at `0x03700000`.
+
+**Kernel-thunk dispatch.** The guest calls `[thunk_va]` whose value is still
+`0x80000000 | ordinal` (the loader maps sections raw and does not fix up the
+thunk table, unlike the real kernel). `rex_dispatch` branches on bit 31 into a
+generated `rex_kernel_dispatch(c, ordinal)` (`recomp_kthunks.c`) that switches
+ordinal → `__imp__<Name>`.
+
+**Starter kernel** (`runtime/ogxbox_kernel.c`, ~40 xboxkrnl functions):
+bump-allocator pool + `RtlAllocateHeap`/`FreeHeap`/`ReAllocate`/`SizeHeap`,
+`Ex/MmAllocate*`, `NtAllocateVirtualMemory` (honours a requested base);
+`PsCreateSystemThreadEx` spawns a real Win32 thread with its own `RecompCtx` +
+a 256 KB guest stack from the pool, pushes `StartContext`, calls
+`rex_dispatch(StartRoutine)`; `NtCreateEvent`/`SetEvent`/`WaitForSingleObject`
+as Win32 handle wrappers; `KeQueryPerformanceCounter`/`QuerySystemTime`/
+`DelayExecutionThread`; `DbgPrint` (walks the guest string). Calling
+convention: the emitter lowers `call __imp__X` to a bare `__imp__X(c)` with no
+pushed return, so an HLE reads args from `[esp]`, `[esp+4]`, ... and pops
+`4*argc` for `__stdcall`.
+
+**What is left is not codegen.** Growing the kernel into a playable layer
+(object table, dispatcher objects, FATX VFS, D3D8-HLE, DirectSound) is the bulk
+of a working port and much of it exists as C in the X-Men repo. Also: shrink
+the ~20k pending functions, fill the last 0.4 % of instructions, chase guest
+faults. The `rex::codegen` port itself — analysis, emitter, config, a runtime
+that assembles and runs the output — is complete. `PORTING.md` has the
+file-by-file status.
