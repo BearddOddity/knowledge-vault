@@ -538,3 +538,39 @@ Fork this layout:
   hook overrides instead of a patched `recomp_manual.c`.
 - Drop: byte-swap layer, STFS, XAM/XBLA, Xenos/ucode. Add: FATX, D3D8 surface,
   the OG dashboard `Y:` mount.
+
+## ## Pipeline method comparison — this vs the X-Men recomp Py…
+
+## Pipeline method comparison — this vs the X-Men recomp Python pipeline
+
+Written up in the recomp repo: `docs/pipeline/00-comparison-rexglue.md`
+(commit `512af84`). Read `tools/disasm` + `tools/func_id` + `tools/recomp`
+against `src/codegen/`.
+
+The five real divergences:
+
+1. **Discovery is one-shot vs fixed-point.** The Python side runs 5 detection
+   passes once (known addrs → `push ebp` prologues → CC-padding-after-`ret` →
+   direct `call` targets → build), then `_find_function_end` once per
+   candidate. A function reachable only from a newly-seeded function is not
+   found until a human re-runs the whole `disasm → func_id → recomp` chain —
+   that manual loop is the entire ledger. ReXGlue's `Discover` loops
+   `while (count grew)`; seeding is what the loop does.
+2. **Extent: `max_addr` high-water walk vs `projectedSize`.** `_find_function_end`
+   extends `max_addr` to each forward cond-jump target and has a documented
+   `+1` fudge (ledger #254: `sub_00340D86` truncated 36→24 bytes, coverage
+   853→7). ReXGlue caps the *false* branch of a conditional at
+   `target - fall_through` so it can't eat the jumped-to block; extent = union
+   of discovered blocks.
+3. **Unresolved target: silent `{ g_esp += 4; }` stub vs a build-time Validate
+   gate.** The Python side discovers unresolved calls at runtime (failed-icall
+   census, crash triage). ReXGlue asserts every edge resolves at build time and
+   routes every icall through a dense table + resolver — no no-op path.
+4. **Provenance derived vs intrinsic.** `func_id` classifies *after* discovery
+   into a second JSON. ReXGlue sets `FunctionAuthority` at node creation and the
+   whole merge/vacancy logic keys on the lattice.
+5. **Global registers vs per-call `PPCContext&`.**
+
+Ranked adoption list (in the doc): FunctionGraph + authority lattice >
+`projectedSize` > null-word Scan phase > fixed-point discovery > tail-call
+heuristic set > context struct.
