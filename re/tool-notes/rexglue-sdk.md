@@ -574,3 +574,91 @@ The five real divergences:
 Ranked adoption list (in the doc): FunctionGraph + authority lattice >
 `projectedSize` > null-word Scan phase > fixed-point discovery > tail-call
 heuristic set > context struct.
+
+## ## The port — `ogxbox` / OgXbox.Recomp SDK (C#/x86, 2026-09…
+
+## The port — `ogxbox` / OgXbox.Recomp SDK (C#/x86, 2026-09-10)
+
+The design above was ported to C#, retargeted from Xbox 360 / PowerPC to
+original Xbox / 32-bit x86. Location: `D:\My apps\og-xbox-recomp-sdk` (own git
+repo). This is the "wider OG Xbox recomp SDK" the runtime-blueprint section
+anticipated, and it supersedes the X-Men project's Python `tools/graph`
+prototype (which had only reached Phases 1-2). .NET 10, xUnit, iced-x86 for
+decoding. ReXGlue is BSD-3-Clause; derived files carry an attribution header
+and `LICENSE.rexglue` sits at the repo root.
+
+### What got ported, and its C# home
+
+| ReXGlue | C# | notes |
+|---|---|---|
+| `function_types.h` / `function_node` / `function_graph` | `FunctionTypes.cs`, `FunctionNode.cs`, `FunctionGraph.cs` | authority lattice, 3-state machine, reactive resolution, vacancy checks, funclet marking, `ClassifyTarget` — verbatim in shape. Base index is a binary-searched `SortedList` (the phases hammer `getFunctionContaining`). |
+| `binary_view` / `decoded_binary` | `Binary/BinaryView.cs`, `Binary/Xbe.cs`, `Binary/DecodedBinary.cs` | XBE header + section table + kernel-thunk imports; `XboxKernelExports` has the 371-entry ordinal→name table. `DecodedBinary` decodes on demand via iced-x86 and caches. |
+| `vtable_scanner` / `sig_scanner` | `Analysis/VtableScanner.cs`, `Analysis/SigScanner.cs` | RTTI scan is nearly unchanged (ReXGlue already assumed 32-bit MSVC RTTI); dropped the byte-swap and the PPC 4-byte vtable-slot alignment check. SigScanner is byte+wildcard, unaligned. |
+| `function_scanner` `discoverBlocks` / `detectJumpTable` | `Analysis/FunctionScanner.cs` | worklist block discovery, iced flow-classification instead of PPC opcode dispatch. `jmp reg` / `jmp [mem]` replace `bcctr`. x86 jump-table detector covers three forms: `jmp [table+idx*4]` disp32, `jmp [reg+idx*4]` with `reg ← mov/lea`, and the `mov reg,[T2+idx*4]; add reg,T1; jmp reg` offset-from-base form. Bounds from a `cmp idx,N` behind the jump. |
+| all 6 `phase_*.cpp` | `Phases/Phases.cs` + `PhaseHelpers.cs` + `AnalysisErrors.cs` | Register / Scan / Discover / GapFill / Merge / Validate + `AnalysisPipeline.Run`. |
+| `instruction_dispatch` + `builders/` | `Emit/CEmitter.cs` + `COperand.cs` | **full x86 rewrite** — see below. |
+| `codegen_writer` | `Emit/CodegenWriter.cs` | partitioned `recomp_NNNN.c` + `recomp_decls.h` + dispatch table + weak import stubs. |
+| runtime contract | `runtime/ogxbox_runtime.{h,c}` | per-call `RecompCtx*`, `MEM8/16/32`, eager-EFLAGS helpers, `rex_dispatch` (binary search), `rex_boot`. |
+
+### x86 departures from ReXGlue
+
+- **No `.pdata`.** 32-bit x86 has no `RUNTIME_FUNCTION` array — that entire
+  Register-phase input is PPC/360-only. SEH is a runtime `fs:[0]` chain plus
+  usually-stripped `FPO_DATA`. `PDATA` is kept in the authority lattice for
+  shape parity only, unused. (Recorded as ledger #280 in the X-Men repo.)
+- No PPC save/restore helpers (`__savegprlr` etc.) — the x86 analogues are
+  `__SEH_prolog`/`__alloca_probe`/CRT-init thunks, sig-scanned; list still to
+  be filled.
+- `bcctr` → `jmp reg`/`jmp [mem]`; the 4 PPC jump-table patterns → the x86
+  memory-operand and offset-from-base forms.
+- x64 `_C_specific_handler` scope tables → x86 `_EH4` (`__except_handler4`);
+  the GapFill `{handler, .rdata ptr}` skip keeps working with the `_EH4` shape.
+- C++ EH `FuncInfo` magic `0x19930522` is identical on both.
+- `PPCContext&` → `RecompCtx*`. The port took the per-call-context-struct
+  decision from the start (the "biggest single win" from the takeaways above),
+  so the whole global-register / `_icall_esp` / esp-drift bug family the X-Men
+  Python recomp fought never exists here.
+
+### The x86→C emitter (`Emit/CEmitter.cs`)
+
+Per-mnemonic dispatch on iced's `Mnemonic`. **Eager EFLAGS** — every ALU op
+emits its flag computation inline via `rex_flags_{add,sub,logic}` (the lesson
+from ReXGlue's CA/CR handling, applied to x86). Operands render through
+`COperand`: 32-bit regs are `RecompCtx` fields, `AL`/`AH`/`AX` go through
+`LO8`/`HI8`/`LO16` + `SET_*` macros, memory operands become
+`MEM{8,16,32}(base + index*scale + disp)`, `fs:`/`gs:` route through `rex_seg`.
+Control flow: `jcc`/`setcc`/`cmovcc` from the eager flags, `jmp` internal →
+`goto loc_X`, external → tail call, indirect → `rex_dispatch`; `call` by callee
+name; `ret` → `return`. x87 is a circular `FPU_ST` stack with `rex_fcom` →
+status word for `fnstsw`. REP string ops become `ECX`/`DF` loops. Unhandled
+mnemonics emit a linked `REX_UNIMPLEMENTED` marker and are counted, never
+silently dropped.
+
+### Results on X-Men Legends `default.xbe` (Release)
+
+- **Analysis:** 38,888 functions in ~5 s — 7,281 via direct calls, 3,424 via
+  vtables, 28,052 gap-fill, 130 imports. 18,411 sealed, ~20k pending
+  (unresolved jumps), 244 validation errors. The X-Men Python pipeline reached
+  ~1,199 hand-seeded functions, so the fixed-point graph finds ~30x more with
+  no manual seeding.
+- **Emit:** 18,281 sealed functions, 912,354 instructions, **99.7% lowered to
+  C**. The 2,953 unimplemented are `Iretd`, `In`/`Out` port I/O, obsolete BCD
+  ops, and data decoded as code inside gap-fill regions.
+- `ogxbox emit <xbe> -o <dir>` writes a complete linkable C tree
+  (`recomp_NNNN.c`, `recomp_decls.h`, `recomp_dispatch.c`, `recomp_imports.c`,
+  `ogxbox_runtime.{h,c}`) plus `functions.json` / `labels.json` /
+  `seeded_functions.json` in the schema the X-Men `tools/recomp` already
+  consumes.
+- 43 xUnit tests. No C compiler was available in the build environment, so the
+  emitted C is verified by unit tests on emitted-text patterns, not yet by
+  compilation.
+
+### Not yet ported (refinement, not codegen core)
+
+`OgXbox.Recomp.Runtime` — guest RAM + XBE image load, kernel-import HLE
+(override the weak `__imp__*` stubs), a `main()`; without it the generated C
+links but does not run. Also: shrinking the ~20k pending (more jump-table
+forms, `functionPointerScan` for `mov reg, imm32` code addresses, Merge vacancy
+absorption), `RecompilerConfig` TOML loading, the multi-module
+`ProjectRecompiler` driver, and compile-verification on a box with a C
+compiler. Full file-by-file status: `PORTING.md` in the SDK repo.
