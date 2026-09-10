@@ -662,3 +662,55 @@ forms, `functionPointerScan` for `mov reg, imm32` code addresses, Merge vacancy
 absorption), `RecompilerConfig` TOML loading, the multi-module
 `ProjectRecompiler` driver, and compile-verification on a box with a C
 compiler. Full file-by-file status: `PORTING.md` in the SDK repo.
+
+## ## Port progress — config + runtime skeleton (2026-09-10, c…
+
+## Port progress — config + runtime skeleton (2026-09-10, cont.)
+
+Continued the C#/x86 port. SDK at `D:\My apps\og-xbox-recomp-sdk`, 13 commits.
+
+**`config.cpp` → `Phases/RecompilerConfigLoader.cs`** (via Tomlyn 0.17 — the
+2.x rewrite dropped the `Toml.ToModel` model API). Scalars, `[analysis]`,
+`[functions] "0xADDR" = {size|end,name,parent,share_registers}`,
+`[[switch_tables]]`, `[[midasm_hook]]`, `[[invalid_instructions]]`, top-level
+`seeds`/`indirect_calls` arrays, recursive `includes` with cycle detection.
+`Validate()` flags duplicate/conflicting/overlapping boundaries. x86 drops the
+4-byte alignment checks, the PPC register local-var toggles, and the rexcrt
+heap all-or-nothing group. **Gotcha:** `seeds`/`indirect_calls` are top-level
+arrays and must precede any `[section]` in the file or TOML binds them to that
+section. `ogxbox analyze|emit --config <file.toml>`.
+
+**Merge second-chance resolution.** ReXGlue 0.10.0's `phase_merge.cpp` does not
+actually call `absorbRegionIntoFunction` — it only does `tryResolveFunction` +
+`markFuncletRegisterSharing` + `sealAllReady`, so a branch into another
+function's body stays unresolved and the node never seals. On x86 (unaligned,
+28k of 38k functions are gap-fill) that leaves ~20k pending. The port adds a
+pass: an unresolved branch whose target lands inside another registered
+function is recorded as a tail call to that function (ReXGlue `classifyTarget`
+case 4) so it stops blocking the seal. +483 sealed. The emitter lowers such a
+`jmp` to `rex_dispatch(c, 0xTARGET)` rather than calling a non-existent
+`sub_XXXXXXXX`.
+
+**Runtime skeleton** (`runtime/*.c` + `Emit/ImageWriter.cs`). ReXGlue's
+`system/` layer is a full Xenia-derived console stack; the port ships a minimal
+version that makes the output link and (in principle) run:
+- `ImageWriter` emits `recomp_image.bin` (XBE sections concatenated raw — no
+  decompression, unlike XEX) + `recomp_image.c` (a `{va, file_off, size}` map +
+  `rex_load_image` that maps each section to its VA). XBE parsing stays in C#.
+- `ogxbox_runtime.c`: `rex_boot(image_path)` — alloc guest RAM sized to
+  `base + image_size + slack`, map the image, binary-search the dispatch table
+  for the entry VA, call it with a fresh `RecompCtx` (`esp = 0x7FFF0000`).
+- `ogxbox_kernel.c`: starter xboxkrnl HLE overriding the weak `__imp__*` stubs
+  — a bump pool allocator (`ExAllocatePool*`, `MmAllocateContiguousMemory`),
+  `DbgPrint` (walks the guest format string), `KeBugCheck`/`HalReturnToFirmware`
+  (halt), `RtlInit*String`. **Calling convention:** the emitter lowers
+  `call __imp__X` to a bare `__imp__X(c)` with no pushed return address, so the
+  HLE reads args from `[esp]`, `[esp+4]`, ... and pops `4*argc` for `__stdcall`;
+  `__cdecl`/varargs leave the pop to the generated caller.
+- `CodegenWriter` emits a `CMakeLists.txt` listing every source, so
+  `ogxbox emit <xbe> -o <dir>` produces a `cmake`-buildable tree.
+
+Still not compiled — no C compiler in the work environment. The kernel HLE is a
+skeleton; a working port grows it into the object table / thread scheduler /
+FATX VFS / D3D8-HLE / DirectSound layer (much of which already exists as C in
+the X-Men repo). `PORTING.md` in the SDK has the current file-by-file status.
