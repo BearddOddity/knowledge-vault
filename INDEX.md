@@ -27,7 +27,7 @@
 - re/patterns/packers.md — UPX with renamed sections, and unpacking by running instead (1 technique logged)
 - re/patterns/separating-engine-platform-and-game-code-across-binaries.md — One title built for two platforms pins the platform layer exactly; more titles… (6 techniques logged)
 - re/patterns/stabs-debug-symbols-in-mingw-binaries.md — Check for .stab/.stabstr sections before assuming locals are anonymous - GCC/Mi… (1 technique logged)
-- re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (7 techniques logged)
+- re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (8 techniques logged)
 - re/patterns/static-recompilation.md — Deciding which console limits a port may raise (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
 - re/patterns/xmlb-ui-format.md — **The UI menu files in `UI/menus/*.XMLB` are not XML. They are a custom binary… (6 techniques logged)
