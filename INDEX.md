@@ -42,6 +42,7 @@
 - re/solved-problems/keygen-2-by-nicohogtag.md — Shipped STABS debug symbols named every local, turning the check into readable C; the algorithm reads two bytes past its input buffer, so the expected serial depends on the saved EBP.
 - re/solved-problems/prime-exe-crackmes-one.md — Password recovered by inverting pow(129, char, 251) then XOR - the character was the exponent
 - re/solved-problems/qvm32.md — A bytecode VM whose interpreter hides the password check from x86 tracing; the oracle is VM instructions executed, not x86 instructions.
+- re/solved-problems/rexglue-mua-gold-recompile-bringup.md — Windows ReXGlue toolchain bring-up + first boot of a static-recompiled Marvel Ultimate Alliance Gold Edition (X360 -> PC); blocked on the game's packed asset archive (assetsfb.wad)
 - re/solved-problems/x-men-legends-ii-pc-modernization-campaign.md — X-Men Legends II: Rise of Apocalypse (PC, 2005) was modernized to 4K + 16x MSAA + borderless windowed + ReShade post-processing + dgVoodoo2, all via INI config and external enhancers — no binary patching, no XMLB UI modification.
 - re/solved-problems/x-men-legends-xbox-analysis-campaign.md — Took an Xbox game binary from 714 named functions to 4,560 and split its 15,742 functions into platform, engine and game code, using RTTI vtable walking plus cross-binary hash comparison against four related builds.
 - re/solved-problems/xbox-recomp-config-function-list-splits-leak-guest-stack.md — A recompiler that honors a disassembler's function list verbatim truncates real functions at cold-path/epilogue split points, turning local jumps into stack-leaking tail dispatches; a pre-discovery coalesce pass folds the fragments back.
@@ -61,4 +62,4 @@
 - re/tool-notes/xemu-oracle.md (1 note)
 - re/tool-notes/xml2-pc-oracle.md (2 notes)
 
-## Last updated: 2026-09-10
+## Last updated: 2026-09-11
