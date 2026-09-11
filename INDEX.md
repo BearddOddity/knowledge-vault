@@ -34,6 +34,7 @@
 
 ### Solved problems
 - re/solved-problems/alchemy-class-registry-recovered-from-x-men-legends.md — Recovered 696 class names, their sizes, inheritance and 2,110 attributable functions from the game's own startup registration table, after two external symbol sources had largely failed
+- re/solved-problems/alchemy-engine-assetsfb-wad-is-zip.md — Raven/Alchemy engine's "assetsfb.wad" asset container is a plain ZIP file with the extension renamed — no custom format.
 - re/solved-problems/athanor-csharp-prowl-rewrite-and-igb-port.md — Rewrote the "Athanor" X-Men Legends II modding toolkit from Rust/Tauri to C# on the Prowl game engine, ported the XMLB and IGB Alchemy formats with byte-level verification against thousands of real retail files, and wired both into a real running editor - textures import as native assets, menu files edit and save round-trip live.
 - re/solved-problems/bfcrackme40-keygen.md — Keygen recovered by disassembling VB6 P-code; the check is a string range, not an equality
 - re/solved-problems/bfcrackme40-partial.md — UPX-0.82 VB6 P-code crackme: unpacked and valid serials found, but no general keygen yet
