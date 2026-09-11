@@ -30,6 +30,7 @@
 - re/patterns/static-recompilation-debugging.md — Census a mapped guest null page instead of unmapping it, A null guard outside t… (9 techniques logged)
 - re/patterns/static-recompilation.md — Deciding which console limits a port may raise (1 technique logged)
 - re/patterns/vb6.md — Detect P-code before disassembling, and attack it dynamically, Locating P-code… (3 techniques logged)
+- re/patterns/xbox360-recompiler-gpu-debugging.md — Localizing an Xenos "invalid fetch constant" black-screen to a bad guest predic… (1 technique logged)
 - re/patterns/xmlb-ui-format.md — **The UI menu files in `UI/menus/*.XMLB` are not XML. They are a custom binary… (6 techniques logged)
 
 ### Solved problems
