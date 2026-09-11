@@ -125,3 +125,7 @@ With the corrected check: 4 of 1,832 executed call sites failed. Two of those we
 Tool: `depth_audit.py` - reads an ABI-build stderr log (site, callee, returned-depth triples) plus the generated source tree, cross-references, reports mismatches sorted by magnitude.
 
 General lesson: any "does this function balance the stack" check needs the callee's OWN contract as ground truth, not an assumed convention (cdecl/stdcall/N-args). A generated/recompiled callee may legitimately clean up any amount depending on what the original instruction stream did.
+
+## re-run the missed-function auto-fixer after every wall fix, before reaching for probes
+
+Fixing one crash routinely changes control flow enough to expose brand new, previously-unreached indirect-call targets the static scanner never saw. In one session this pattern repeated three separate times: fix a real bug, immediately re-run the SDK's missed-function auto-fixer (a tool that reads unresolved indirect-call addresses out of the crash log and checks each one decodes as plausible, non-degenerate code before seeding it as a function), and it mechanically found and fixed the next several walls with zero investigation needed - one batch alone took the guest call count from roughly 62,000 to roughly 148,000 in a single pass. Only reach for manual probing/hooking once the auto-fixer comes back with nothing left to seed. Treat "re-run the cheap mechanical fixer first" as the default reflex after any fix that changes which code paths execute, not just at the start of a session.
