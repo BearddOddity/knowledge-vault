@@ -48,6 +48,7 @@
 - re/solved-problems/xbox-recomp-config-function-list-splits-leak-guest-stack.md — A recompiler that honors a disassembler's function list verbatim truncates real functions at cold-path/epilogue split points, turning local jumps into stack-leaking tail dispatches; a pre-discovery coalesce pass folds the fragments back.
 - re/solved-problems/xbox-recomp-stack-leak-traced-to-two-functions.md — Traced a container/pointer corruption wall in the X-Men Legends recompilation down through 5+ hops of indirect dispatch to a 4-byte guest-stack leak in two specific functions, confirmed by two independent instruments naming the same pair.
 - re/solved-problems/xbox-recomp-wall19-kernel-thunk-stdcall-leak.md — A universal recompiler-generator bug (not a per-title issue): the fallback for unimplemented Xbox kernel imports popped only its own return slot, silently leaking the real stdcall argbytes on every call, corrupting a distant stack frame
+- re/solved-problems/xbox-recomp-wall23-auto-seed-seeded-a-jump-target-not-a-function.md — A missed-function auto-fixer seeded a mid-function jump target as an independent callable function because it decoded as clean x86; every synthetic call to it ran with garbage register state, and the crash address itself turned out to be compiler inter-function padding bytes, not uninitialized heap memory
 
 ### Tool notes
 - re/tool-notes/alchemy-sdk.md (2 notes)
